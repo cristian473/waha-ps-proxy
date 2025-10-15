@@ -5,6 +5,7 @@ import { SendMessageDto, SendImageDto, SendFileDto, MessageType } from '../entit
 export const redisConnection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || '',
 };
 
 // Interface para el job data base
@@ -152,8 +153,7 @@ export async function addImageToQueue(data: SendImageDto): Promise<string> {
     'send-image',
     jobData,
     {
-      jobId: `${queueKey}-${data.chatId}-image-${Date.now()}`, // ID único para el job
-      
+      jobId: `${queueKey}-${data.chatId}-image-${Date.now()}`, // ID único para el job      
     }
   );
 
