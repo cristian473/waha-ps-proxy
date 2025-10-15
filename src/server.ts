@@ -18,6 +18,7 @@ import EnvVars from './constants/EnvVars';
 import { NodeEnvs } from './constants/misc';
 import { RouteError } from './other/errorHandler';
 import apiRouter from './router';
+import { serverAdapter as queueDashboard } from './queues/dashboard';
 
 // **** Variables **** //
 
@@ -46,6 +47,9 @@ if (EnvVars.NodeEnv === NodeEnvs.Production.valueOf()) {
 app.get('/', (req, res) => {
   res.send('Hello World')
 })
+
+// Bull Board Dashboard - Monitoreo de queues
+app.use('/admin/queues', queueDashboard.getRouter());
 
 app.use('/api', apiRouter);
 

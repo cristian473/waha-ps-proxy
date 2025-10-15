@@ -119,10 +119,67 @@ export interface WhatsAppWebhookPayload {
   };
 }
 
-// Send message request DTO
+// Tipos de mensajes soportados
+export type MessageType = 'text' | 'file' | 'image';
+
+// Payload para mensaje de texto
+export interface TextPayload {
+  content: string;
+  reply_to?: string;
+}
+
+// Payload para archivo o imagen
+export interface FilePayload {
+  mimetype: string;
+  filename: string;
+  url: string;
+  reply_to?: string;
+  caption?: string;
+}
+
+// Mensaje individual
+export interface MessageItem {
+  type: MessageType;
+  payload: TextPayload | FilePayload;
+}
+
+// Send message request DTO (texto simple - backward compatibility)
 export interface SendMessageDto {
   chatId: string;
   text: string;
+  session: string;
+}
+
+// Send messages batch request DTO (array de mensajes)
+export interface SendMessagesDto {
+  chatId: string;
+  messages: MessageItem[];
+  session: string;
+}
+
+// Send image request DTO
+export interface SendImageDto {
+  chatId: string;
+  file: {
+    mimetype: string;
+    filename: string;
+    url: string;
+  };
+  reply_to?: string | null;
+  caption?: string;
+  session: string;
+}
+
+// Send file request DTO
+export interface SendFileDto {
+  chatId: string;
+  file: {
+    mimetype: string;
+    filename: string;
+    url: string;
+  };
+  reply_to?: string | null;
+  caption?: string;
   session: string;
 }
 
