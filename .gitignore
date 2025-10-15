@@ -1,0 +1,12 @@
+.env
+.idea/
+.vscode/
+node_modules/
+tmp/
+temp/
+
+*.lockb
+*.dump
+*.sh
+.vercel
+build

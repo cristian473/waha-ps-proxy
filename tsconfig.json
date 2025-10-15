@@ -1,0 +1,25 @@
+{
+  "ts-node": {
+     "files": true
+  },
+  "compilerOptions": {
+     "lib": [
+         "dom",
+        "es5",
+        "es6"
+     ],
+     "skipLibCheck": true,
+     "target": "es6",
+     "module": "commonjs",
+     "moduleResolution": "node",
+     "outDir": "./build",
+     "emitDecoratorMetadata": true,
+     "experimentalDecorators": true,
+     "sourceMap": true,
+     "resolveJsonModule":true,
+     "esModuleInterop":true,
+     // "paths": {
+     //    "@/*": ["./src/*"]
+     //  }
+  }
+}
