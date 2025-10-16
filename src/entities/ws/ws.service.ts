@@ -32,18 +32,26 @@ function calculateTypingDelay(textLength: number): number {
  */
 async function processWebhook({payload}: WhatsAppWebhookPayload): Promise<void> {
   if (payload?.body && !payload.hasMedia) {
-    const number = payload?.from.split('@')[0];
-    const existsNumber = await sheet.existsNumber(number)
+    const userPhone = payload?.from.split('@')[0]; // Número del usuario que envía
+    const botNumber = payload?.to.split('@')[0]; // Número del bot que recibe
+    
+    const existsNumber = await sheet.existsNumber(botNumber)
     if(!existsNumber) {
+      console.log(`🚫 Bot ${botNumber} no encontrado en la configuración`)
       return
     }
-    const { messageToSend, webhook } = await processWebhookMessage(payload.body, number)
+    
+    const { messageToSend, webhook } = await processWebhookMessage(payload.body, userPhone, botNumber)
+    
+    // Si no hay webhook, significa que no se debe responder (por filtros de permitidos/exceptuados)
     if(!webhook) {
-      throw new RouteError(HttpStatusCodes.NOT_FOUND, 'Webhook not found')
+      console.log(`🚫 No se enviará mensaje para bot ${botNumber} y usuario ${userPhone}`)
+      return
     }
+    
     await axios.post(webhook, { 
       message: messageToSend, 
-      userPhone: number, 
+      userPhone: userPhone, 
       userName: payload._data.notifyName
     })
   }
