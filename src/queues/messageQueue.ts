@@ -1,5 +1,5 @@
 import { Queue, QueueEvents } from 'bullmq';
-import { SendMessageDto, SendImageDto, SendFileDto, MessageType } from '../entities/ws/ws.dto';
+import { SendMessageDto, SendImageDto, SendFileDto, MessageType, MessageItem } from '../entities/ws/ws.dto';
 
 // Configuración de conexión a Redis
 export const redisConnection = {
@@ -35,8 +35,17 @@ export interface FileMessageJobData extends BaseMessageJobData {
   caption?: string;
 }
 
+// Interface para job batch (múltiples mensajes)
+export interface BatchMessageJobData {
+  chatId: string;
+  session: string;
+  queueKey: string;
+  messageType: 'batch';
+  messages: MessageItem[];
+}
+
 // Union type para todos los tipos de jobs
-export type MessageJobData = TextMessageJobData | FileMessageJobData;
+export type MessageJobData = TextMessageJobData | FileMessageJobData | BatchMessageJobData;
 
 // Crear la queue de mensajes con BullMQ
 export const messageQueue = new Queue<MessageJobData>('whatsapp-messages', {
@@ -98,6 +107,36 @@ export function decrementActiveJobs(session: string): void {
  */
 export function getActiveJobsCount(session: string): number {
   return activeJobs.get(session) || 0;
+}
+
+/**
+ * Agrega un batch de mensajes a la queue como una sola tarea
+ */
+export async function addBatchMessagesToQueue(data: {
+  chatId: string;
+  messages: MessageItem[];
+  session: string;
+}): Promise<string> {
+  const queueKey = `${data.session}`;
+
+  const jobData: BatchMessageJobData = {
+    chatId: data.chatId,
+    session: data.session,
+    queueKey,
+    messageType: 'batch',
+    messages: data.messages,
+  };
+
+  const job = await messageQueue.add(
+    'send-batch-messages',
+    jobData,
+    {
+      jobId: `${queueKey}-${data.chatId}-batch-${Date.now()}`,
+    }
+  );
+
+  console.log(`📥 Batch de ${data.messages.length} mensajes encolado con ID: ${job.id} para session ${queueKey}`);
+  return job.id || '';
 }
 
 /**

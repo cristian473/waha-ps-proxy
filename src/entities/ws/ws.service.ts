@@ -64,14 +64,13 @@ async function sendMessage(data: SendMessageDto): Promise<SendMessageResponseDto
   try {
     //veo el mensaje y espero unos segundos
     await sendSeen(data);
-    await waitRandom();
+    await waitRandom(0, 2000);
     //inicio a escribir
     await startTyping(data);
     //espero un tiempo basado en la longitud del mensaje
     const typingDelay = calculateTypingDelay(data.text.length);
     await wait(typingDelay);
     //paro de escribir
-    await stopTyping(data);
     console.log('📤 Enviando mensaje a través de WAHA:', {
       chatId: data.chatId,
       session: data.session,
@@ -87,6 +86,7 @@ async function sendMessage(data: SendMessageDto): Promise<SendMessageResponseDto
         text: data.text
       }
     );
+    await stopTyping(data);
 
     const wahaResponseSuccess: boolean = response.status === 201;
     const wahaResponse: WahaApiResponse = response.data;
@@ -173,7 +173,7 @@ async function sendImage(data: SendImageDto): Promise<SendMessageResponseDto> {
   try {
     // Ver el mensaje y esperar unos segundos
     await sendSeen(data);
-    await waitRandom();
+    await waitRandom(0, 2000);
 
     console.log('📤 Enviando imagen a través de WAHA:', {
       chatId: data.chatId,
@@ -237,7 +237,7 @@ async function sendFile(data: SendFileDto): Promise<SendMessageResponseDto> {
   try {
     // Ver el mensaje y esperar unos segundos
     await sendSeen(data);
-    await waitRandom();
+    await waitRandom(0, 2000);
 
     console.log('📤 Enviando archivo a través de WAHA:', {
       chatId: data.chatId,

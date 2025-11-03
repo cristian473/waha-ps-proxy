@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import HttpStatusCodes from '../../constants/HttpStatusCodes';
 import wsService from './ws.service';
-import { WhatsAppWebhookPayload, SendMessagesDto, TextPayload, FilePayload } from './ws.dto';
+import { WhatsAppWebhookPayload, SendMessagesDto } from './ws.dto';
 import { RouteError } from '../../other/errorHandler';
-import { addMessageToQueue, addImageToQueue, addFileToQueue } from '../../queues/messageQueue';
+import { addBatchMessagesToQueue } from '../../queues/messageQueue';
 
 /**
  * Webhook endpoint to receive WhatsApp messages
@@ -27,20 +27,6 @@ export async function handleWebhook(req: Request, res: Response) {
 }
 
 /**
- * Helper para verificar si un payload es TextPayload
- */
-function isTextPayload(payload: any): payload is TextPayload {
-  return 'content' in payload && typeof payload.content === 'string';
-}
-
-/**
- * Helper para verificar si un payload es FilePayload
- */
-function isFilePayload(payload: any): payload is FilePayload {
-  return 'url' in payload && 'filename' in payload && 'mimetype' in payload;
-}
-
-/**
  * Send WhatsApp messages (text, images, files) through WAHA API (via queue)
  * Accepts an array of messages with different types
  */
@@ -50,96 +36,33 @@ export async function sendMessage(req: Request, res: Response) {
 
     // Validate required fields
     if (!chatId || !session) {
+      console.log('Missing required fields:', { chatId, session });
       throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'Missing required fields: chatId and session are required');
     }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.log('Invalid messages array:', messages);
       throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'messages must be a non-empty array');
     }
 
-    const jobIds: string[] = [];
     console.log({
-      encolando: messages,
-    })
-    // Procesar cada mensaje del array
-    for (const message of messages) {
-      const { type, payload } = message;
-      console.log({
-        type,
-        payload,
-      })
+      encolandoBatch: messages.length,
+      messages
+    });
 
-      // Validar que tenga tipo y payload
-      if (!type || !payload) {
-        throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'Each message must have type and payload');
-      }
+    // Encolar todos los mensajes como una sola tarea
+    const jobId = await addBatchMessagesToQueue({
+      chatId,
+      messages,
+      session
+    });
 
-      let jobId: string;
-      switch (type) {
-        case 'text': {
-          if (!isTextPayload(payload)) {
-            throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'Text message must have content in payload');
-          }
-
-          jobId = await addMessageToQueue({
-            chatId,
-            text: payload.content,
-            session,
-          });
-          break;
-        }
-
-        case 'image': {
-          if (!isFilePayload(payload)) {
-            throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'Image message must have url, filename, and mimetype in payload');
-          }
-
-          jobId = await addImageToQueue({
-            chatId,
-            file: {
-              url: payload.url,
-              filename: payload.filename,
-              mimetype: payload.mimetype,
-            },
-            reply_to: payload.reply_to || null,
-            caption: payload.caption,
-            session,
-          });
-          break;
-        }
-
-        case 'file': {
-          if (!isFilePayload(payload)) {
-            throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'File message must have url, filename, and mimetype in payload');
-          }
-
-          jobId = await addFileToQueue({
-            chatId,
-            file: {
-              url: payload.url,
-              filename: payload.filename,
-              mimetype: payload.mimetype,
-            },
-            reply_to: payload.reply_to || null,
-            caption: payload.caption,
-            session,
-          });
-          break;
-        }
-
-        default:
-          throw new RouteError(HttpStatusCodes.BAD_REQUEST, `Unsupported message type: ${type}`);
-      }
-
-      jobIds.push(jobId);
-    }
-
-    // Responder inmediatamente con los IDs de todos los jobs
+    // Responder inmediatamente con el ID del job
     res.status(HttpStatusCodes.ACCEPTED).json({
       success: true,
-      jobIds,
-      count: jobIds.length,
-      message: `${jobIds.length} message(s) queued successfully`,
+      jobId,
+      count: messages.length,
+      message: `${messages.length} message(s) queued successfully in batch`,
       status: 'queued'
     });
   } catch (error) {

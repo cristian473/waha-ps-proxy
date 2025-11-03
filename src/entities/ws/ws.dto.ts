@@ -120,7 +120,7 @@ export interface WhatsAppWebhookPayload {
 }
 
 // Tipos de mensajes soportados
-export type MessageType = 'text' | 'file' | 'image';
+export type MessageType = 'text' | 'file' | 'image' | 'batch';
 
 // Payload para mensaje de texto
 export interface TextPayload {

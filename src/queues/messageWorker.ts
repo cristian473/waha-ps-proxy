@@ -4,6 +4,7 @@ import {
   MessageJobData,
   TextMessageJobData,
   FileMessageJobData,
+  BatchMessageJobData,
   canProcessMessage,
   incrementActiveJobs,
   decrementActiveJobs,
@@ -11,6 +12,7 @@ import {
   messageQueue
 } from './messageQueue';
 import wsService from '../entities/ws/ws.service';
+import { TextPayload, FilePayload } from '../entities/ws/ws.dto';
 
 // 🔐 Conexión a Redis para locks
 const redis = new IORedis(redisConnection);
@@ -64,6 +66,11 @@ async function processMessageJob(job: Job<MessageJobData>) {
   job.log(`🚀 Iniciando procesamiento de ${messageType} para session ${queueKey}`);
   job.log(`   Job ID: ${job.id}`);
   job.log(`   Chat ID: ${chatId}`);
+
+  // Si es un batch, procesarlo de manera especial
+  if (messageType === 'batch') {
+    return await processBatchMessages(job as Job<BatchMessageJobData>);
+  }
 
   // Esperar hasta que haya espacio disponible (no más de 2 concurrentes por session)
   await waitForAvailableSlot(session, queueKey);
@@ -140,6 +147,116 @@ async function processMessageJob(job: Job<MessageJobData>) {
     throw error;
   } finally {
     // Siempre liberar lock y decrementar contador
+    await releaseChatLock(session, chatId);
+    decrementActiveJobs(session);
+  }
+}
+
+/**
+ * Procesa un batch de mensajes secuencialmente
+ */
+async function processBatchMessages(job: Job<BatchMessageJobData>) {
+  const { chatId, session, queueKey, messages } = job.data;
+
+  job.log(`📦 Procesando batch de ${messages.length} mensajes para session ${queueKey}`);
+
+  // Esperar hasta que haya espacio disponible
+  await waitForAvailableSlot(session, queueKey);
+
+  // 🔐 Obtener lock para este chat
+  const gotLock = await acquireChatLock(session, chatId);
+  if (!gotLock) {
+    const delay = 2000;
+    console.log(`🔁 Chat ${chatId} bloqueado, reencolando batch ${job.id} con delay ${delay}ms`);
+    await messageQueue.add(job.name, job.data, { delay });
+    return;
+  }
+
+  // Incrementar contador de jobs activos
+  incrementActiveJobs(session);
+
+  try {
+    const results = [];
+    const totalMessages = messages.length;
+
+    // Procesar cada mensaje del batch secuencialmente
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
+      const progress = Math.floor(((i + 1) / totalMessages) * 100);
+
+      job.log(`📨 [${i + 1}/${totalMessages}] Procesando mensaje tipo ${message.type}`);
+
+      let result: Awaited<ReturnType<typeof wsService.sendMessage>>;
+
+      switch (message.type) {
+        case 'text': {
+          const payload = message.payload as TextPayload;
+          job.log(`   Texto: ${payload.content.slice(0, 50)}`);
+          result = await wsService.sendMessage({
+            chatId,
+            session,
+            text: payload.content,
+          });
+          break;
+        }
+        case 'image': {
+          const payload = message.payload as FilePayload;
+          job.log(`   Imagen: ${payload.filename}`);
+          result = await wsService.sendImage({
+            chatId,
+            session,
+            file: {
+              url: payload.url,
+              filename: payload.filename,
+              mimetype: payload.mimetype,
+            },
+            caption: payload.caption,
+            reply_to: payload.reply_to,
+          });
+          break;
+        }
+        case 'file': {
+          const payload = message.payload as FilePayload;
+          job.log(`   Archivo: ${payload.filename}`);
+          result = await wsService.sendFile({
+            chatId,
+            session,
+            file: {
+              url: payload.url,
+              filename: payload.filename,
+              mimetype: payload.mimetype,
+            },
+            caption: payload.caption,
+            reply_to: payload.reply_to,
+          });
+          break;
+        }
+        default:
+          throw new Error(`Tipo de mensaje no soportado: ${message.type}`);
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || `Error al enviar mensaje ${i + 1}`);
+      }
+
+      results.push(result);
+      await job.updateProgress(progress);
+
+      job.log(`✅ [${i + 1}/${totalMessages}] Mensaje enviado exitosamente, ID: ${result.messageId}`);
+    }
+
+    job.log(`🎉 Batch completado: ${results.length}/${totalMessages} mensajes enviados`);
+
+    return {
+      success: true,
+      totalMessages,
+      sentMessages: results.length,
+      results,
+    };
+  } catch (error: any) {
+    job.log(`❌ Error al procesar batch para ${queueKey}: ${error.message}`);
+    throw error;
+  } finally {
     await releaseChatLock(session, chatId);
     decrementActiveJobs(session);
   }
