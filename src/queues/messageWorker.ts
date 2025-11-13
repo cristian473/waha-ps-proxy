@@ -196,6 +196,7 @@ async function processBatchMessages(job: Job<BatchMessageJobData>) {
             chatId,
             session,
             text: payload.content,
+            reply_to: message.reply_to
           });
           break;
         }
@@ -211,7 +212,7 @@ async function processBatchMessages(job: Job<BatchMessageJobData>) {
               mimetype: payload.mimetype,
             },
             caption: payload.caption,
-            reply_to: payload.reply_to,
+            reply_to: message.reply_to,
           });
           break;
         }
@@ -227,7 +228,7 @@ async function processBatchMessages(job: Job<BatchMessageJobData>) {
               mimetype: payload.mimetype,
             },
             caption: payload.caption,
-            reply_to: payload.reply_to,
+            reply_to: message.reply_to,
           });
           break;
         }

@@ -47,7 +47,7 @@ export async function sendMessage(req: Request, res: Response) {
 
     console.log({
       encolandoBatch: messages.length,
-      messages
+      messages: JSON.stringify(messages)
     });
 
     // Encolar todos los mensajes como una sola tarea

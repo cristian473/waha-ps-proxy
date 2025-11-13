@@ -74,7 +74,8 @@ async function sendMessage(data: SendMessageDto): Promise<SendMessageResponseDto
     console.log('📤 Enviando mensaje a través de WAHA:', {
       chatId: data.chatId,
       session: data.session,
-      textLength: data.text.length
+      textLength: data.text.length,
+      reply_to: data.reply_to
     });
 
     //envio el mensaje
@@ -83,7 +84,8 @@ async function sendMessage(data: SendMessageDto): Promise<SendMessageResponseDto
       {
         chatId: data.chatId,
         session: data.session,
-        text: data.text
+        text: data.text,
+        reply_to: data.reply_to
       }
     );
     await stopTyping(data);

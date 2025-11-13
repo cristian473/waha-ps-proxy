@@ -125,7 +125,6 @@ export type MessageType = 'text' | 'file' | 'image' | 'batch';
 // Payload para mensaje de texto
 export interface TextPayload {
   content: string;
-  reply_to?: string;
 }
 
 // Payload para archivo o imagen
@@ -133,7 +132,6 @@ export interface FilePayload {
   mimetype: string;
   filename: string;
   url: string;
-  reply_to?: string;
   caption?: string;
 }
 
@@ -141,6 +139,7 @@ export interface FilePayload {
 export interface MessageItem {
   type: MessageType;
   payload: TextPayload | FilePayload;
+  reply_to?: string
 }
 
 // Send message request DTO (texto simple - backward compatibility)
@@ -148,6 +147,7 @@ export interface SendMessageDto {
   chatId: string;
   text: string;
   session: string;
+  reply_to?: string;
 }
 
 // Send messages batch request DTO (array de mensajes)
