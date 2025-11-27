@@ -2,10 +2,8 @@ import axios from 'axios';
 import { SendMessageDto, SendImageDto, SendFileDto, SendMessageResponseDto, WahaApiResponse, WhatsAppWebhookPayload } from './ws.dto';
 import { wahaClient } from '../../other/wahaClient';
 import sheet from '../../utils/sheets';
-import { RouteError } from '../../other/errorHandler';
-import HttpStatusCodes from '../../constants/HttpStatusCodes';
 import { processWebhookMessage } from '../../utils/webhook';
-import { waitRandom, wait, getRandomDelay } from '../../utils/wait';
+import { wait, getRandomDelay } from '../../utils/wait';
 
 /**
  * Calculate typing delay based on message length
@@ -64,7 +62,7 @@ async function sendMessage(data: SendMessageDto): Promise<SendMessageResponseDto
   try {
     //veo el mensaje y espero unos segundos
     await sendSeen(data);
-    await waitRandom(0, 2000);
+    // await waitRandom(0, 2000);
     //inicio a escribir
     await startTyping(data);
     //espero un tiempo basado en la longitud del mensaje
@@ -175,7 +173,7 @@ async function sendImage(data: SendImageDto): Promise<SendMessageResponseDto> {
   try {
     // Ver el mensaje y esperar unos segundos
     await sendSeen(data);
-    await waitRandom(0, 2000);
+    // await waitRandom(0, 2000);
 
     console.log('📤 Enviando imagen a través de WAHA:', {
       chatId: data.chatId,
@@ -239,7 +237,7 @@ async function sendFile(data: SendFileDto): Promise<SendMessageResponseDto> {
   try {
     // Ver el mensaje y esperar unos segundos
     await sendSeen(data);
-    await waitRandom(0, 2000);
+    // await waitRandom(0, 2000);
 
     console.log('📤 Enviando archivo a través de WAHA:', {
       chatId: data.chatId,

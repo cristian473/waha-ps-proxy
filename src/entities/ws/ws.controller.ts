@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import HttpStatusCodes from '../../constants/HttpStatusCodes';
 import wsService from './ws.service';
-import { WhatsAppWebhookPayload, SendMessagesDto } from './ws.dto';
+import { WhatsAppWebhookPayload, SendMessagesDto, ControlActionDto } from './ws.dto';
 import { RouteError } from '../../other/errorHandler';
 import { addBatchMessagesToQueue } from '../../queues/messageQueue';
+import { formatChatId } from '../../utils/formatChatId';
 
 /**
  * Webhook endpoint to receive WhatsApp messages
@@ -45,14 +46,11 @@ export async function sendMessage(req: Request, res: Response) {
       throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'messages must be a non-empty array');
     }
 
-    console.log({
-      encolandoBatch: messages.length,
-      messages: JSON.stringify(messages)
-    });
+    // Format chatId to WhatsApp format
+    const formattedChatId = formatChatId(chatId);
 
-    // Encolar todos los mensajes como una sola tarea
     const jobId = await addBatchMessagesToQueue({
-      chatId,
+      chatId: formattedChatId,
       messages,
       session
     });
@@ -68,5 +66,98 @@ export async function sendMessage(req: Request, res: Response) {
   } catch (error) {
     console.error('Error queuing messages:', error);
     throw new RouteError(HttpStatusCodes.INTERNAL_SERVER_ERROR, 'Internal server error while queuing messages');
+  }
+}
+
+/**
+ * Send seen indicator (mark message as read)
+ * Requires session and chatId (phone number)
+ */
+export async function sendSeen(req: Request, res: Response) {
+  try {
+    const { session, chatId }: ControlActionDto = req.body;
+
+    // Validate required fields
+    if (!session || !chatId) {
+      throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'Missing required fields: session and chatId are required');
+    }
+
+    // Format chatId to WhatsApp format
+    const formattedChatId = formatChatId(chatId);
+
+    await wsService.sendSeen({ session, chatId: formattedChatId });
+
+    res.status(HttpStatusCodes.OK).json({
+      success: true,
+      message: 'Seen indicator sent successfully'
+    });
+  } catch (error: any) {
+    console.error('Error sending seen:', error);
+    if (error instanceof RouteError) {
+      throw error;
+    }
+    throw new RouteError(HttpStatusCodes.INTERNAL_SERVER_ERROR, 'Internal server error while sending seen indicator');
+  }
+}
+
+/**
+ * Start typing indicator
+ * Requires session and chatId (phone number)
+ */
+export async function startTyping(req: Request, res: Response) {
+  try {
+    const { session, chatId }: ControlActionDto = req.body;
+
+    // Validate required fields
+    if (!session || !chatId) {
+      throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'Missing required fields: session and chatId are required');
+    }
+
+    // Format chatId to WhatsApp format
+    const formattedChatId = formatChatId(chatId);
+
+    await wsService.startTyping({ session, chatId: formattedChatId });
+
+    res.status(HttpStatusCodes.OK).json({
+      success: true,
+      message: 'Typing indicator started successfully'
+    });
+  } catch (error: any) {
+    console.error('Error starting typing:', error);
+    if (error instanceof RouteError) {
+      throw error;
+    }
+    throw new RouteError(HttpStatusCodes.INTERNAL_SERVER_ERROR, 'Internal server error while starting typing indicator');
+  }
+}
+
+/**
+ * Stop typing indicator
+ * Requires session and chatId (phone number)
+ */
+export async function stopTyping(req: Request, res: Response) {
+  try {
+    const { session, chatId }: ControlActionDto = req.body;
+
+    // Validate required fields
+    if (!session || !chatId) {
+      throw new RouteError(HttpStatusCodes.BAD_REQUEST, 'Missing required fields: session and chatId are required');
+    }
+
+    // Format chatId to WhatsApp format
+    const formattedChatId = formatChatId(chatId);
+
+    await wsService.stopTyping({ session, chatId: formattedChatId });
+
+    res.status(HttpStatusCodes.OK).json({
+      success: true,
+      message: 'Typing indicator stopped successfully'
+    });
+  } catch (error: any) {
+    console.error('Error stopping typing:', error);
+    if (error instanceof RouteError) {
+      throw error;
+    }
+    throw new RouteError(HttpStatusCodes.INTERNAL_SERVER_ERROR, 'Internal server error while stopping typing indicator');
   }
 }

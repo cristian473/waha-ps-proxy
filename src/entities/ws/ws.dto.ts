@@ -197,4 +197,10 @@ export interface WahaApiResponse {
   message?: string;
 }
 
+// Control action request DTO (for sendSeen, startTyping, stopTyping)
+export interface ControlActionDto {
+  session: string;
+  chatId: string;
+}
+
 

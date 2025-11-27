@@ -10,6 +10,16 @@ router.post('/webhook', controller.handleWebhook);
 // Accepts an array of messages with different types (text, image, file)
 router.post('/send-message', controller.sendMessage);
 
+// Control action endpoints - requires token authentication
+// Send seen indicator (mark message as read)
+router.post('/send-seen', controller.sendSeen);
+
+// Start typing indicator
+router.post('/start-typing', controller.startTyping);
+
+// Stop typing indicator
+router.post('/stop-typing', controller.stopTyping);
+
 export default router;
 
 
